@@ -1,0 +1,317 @@
+<!DOCTYPE html5>
+<head>
+    <title>w</title>
+</head>
+<body>
+    <canvas id="canvas" style="border: 1px solid black"></canvas>
+    <h1 id="total">0</h1>
+    <h2 id="timer">time: 0</h2>
+    <button onclick="gameStart()">start</button>
+</body>
+</html>
+
+<script>
+    const canvas = document.getElementById("canvas");
+    const t = document.getElementById("total");
+    const timer = document.getElementById("timer");
+    const ctx = canvas.getContext("2d");
+
+    const ROWS = 20;
+    const COLS = 10;
+
+    ctx.canvas.width = COLS*20;
+    ctx.canvas.height = ROWS*20;
+
+    ctx.scale(20, 20);
+
+    let start = 0;
+    let offset = 0;
+
+    function gameStart() {
+        offset = window.performance.now();
+        req = requestAnimationFrame(play);
+    }
+
+    let total = 0;
+    var req;
+
+    var stop = false;
+
+    function play(timestamp) {
+        if (!stop) {
+            if (timestamp-start >= 400) {
+                start = timestamp;
+                block.moveDown();
+            }
+            timer.innerHTML = "time: "+(Math.round((timestamp-offset)/10)/100).toString();
+            req = requestAnimationFrame(play);
+            //console.log(timestamp, req);
+        }
+    }
+
+    function clearRow(row) {
+        const y = row;
+        for (let x = 0; x < COLS; x++) {
+            ctx.clearRect(x, y, 1, 1);
+        }
+    }
+
+    function check() {
+        let y = 0;
+        let x = 0;
+        while (y < 20) {
+            while (x < 10 && grid[y][x] != 0) {
+                x ++;
+            }
+            if (x == 10) {
+                total += 100;
+                t.innerHTML = total;
+                for (let c = 0; c <= y; c++) {
+                    clearRow(c);
+                }
+                for (let row = y; row > 0; row--) {
+                    for (let col = 0; col < 10; col ++) {
+                        grid[row][col] = grid[row-1][col];
+                        if (grid[row][col] > 0) {
+                            ctx.fillStyle = colors[grid[row][col]-1];
+                            ctx.fillRect(col, row, 1, 1);
+                        }
+                    }
+                }
+                grid[0].fill(0);
+                clearRow(0);
+            }
+            x = 0;
+            y ++;
+        }
+    }
+
+    const shapes = [
+        [[0, 1, 1],
+        [1, 1, 0],
+        [0, 0, 0]],
+        
+        [[2, 2, 0],
+        [0, 2, 2],
+        [0, 0, 0]],
+
+        [[3, 0, 0],
+        [3, 3, 3],
+        [0, 0, 0]],
+
+        [[0, 0, 4],
+        [4, 4, 4],
+        [0, 0, 0]],
+        
+        [[5, 5],
+        [5, 5]],
+
+        [[0, 6, 0],
+        [6, 6, 6],
+        [0, 0, 0]],
+        
+        [[0, 0, 0, 0],
+        [7, 7, 7, 7],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]]
+        ];
+        
+    const colors = ["green", "red", "blue", "orange", "yellow", "purple", "cyan"];
+
+    class Block {        
+        constructor(ctx) {
+            this.ctx = ctx;
+            //newBlock();
+        }
+
+        newBlock() {
+            this.type = Math.floor(Math.random()*7);
+            this.shape = shapes[this.type].map((row) => row.slice());
+            this.position = {
+                x: Math.floor(Math.random()*(10-this.shape.length)),
+                y: 0
+            }
+            for (let i = 0; i <= Math.floor(Math.random()*4); i++) {
+                this.rotateRight();
+            }
+            
+        }
+
+        draw() {
+            this.ctx.fillStyle = colors[this.type];
+            this.shape.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value > 0) {
+                        this.ctx.fillRect((x+this.position.x), (y+this.position.y), 1, 1);
+                    }
+                })
+            })
+        }
+
+        clear() {
+            this.shape.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value > 0) {
+                        this.ctx.clearRect((x+this.position.x), (y+this.position.y), 1, 1);
+                    }
+                })
+            })
+        }
+
+        rotateRight() {
+            let newShape = Array(this.shape.length).fill().map(() => Array(this.shape.length));
+            for (let y = 0; y < this.shape.length; y++) {
+                for (let x = 0; x < this.shape.length; x ++) {
+                    newShape[y][x] = this.shape[this.shape.length-x-1][y];
+                }
+            }
+            //console.log(valid(this.shape, this.position));
+            if (valid(newShape, this.position)) {
+                this.clear();
+                this.shape = newShape;
+                this.draw();
+            }
+        }
+
+        rotateLeft() {
+            let newShape = Array(this.shape.length).fill().map(() => Array(this.shape.length));
+            for (let y = 0; y < this.shape.length; y++) {
+                for (let x = 0; x < this.shape.length; x ++) {
+                    newShape[y][x] = this.shape[x][this.shape.length-y-1];
+                }
+            }
+
+            if (valid(newShape, this.position)) {
+                this.clear();
+                this.shape = newShape;
+                this.draw();
+            }
+        }
+        
+
+        moveLeft() {
+            let v = valid(this.shape, {...this.position, x: this.position.x-1});
+            //console.log(v, this.shape, this.position);
+            if (v) {
+                this.clear();
+                this.position.x -= 1;
+                this.draw();
+            }
+        }
+        
+        moveRight() {
+            if (valid(this.shape, {...this.position, x: this.position.x+1})) {
+                this.clear();
+                this.position.x += 1;
+                this.draw();
+            }
+        }
+
+        moveDown() {
+            let v = valid(this.shape, {...this.position, y: this.position.y+1});
+            //console.log(v);
+            if (v) {
+                //console.log("aaaaa");
+                this.clear();
+                this.position.y += 1;
+                this.draw();
+            } else {
+                for (let y = 0; y < this.shape.length; y++) {
+                    for (let x = 0; x < this.shape.length; x++) {
+                        //console.log(y, x, this.position);
+                        if (validPoint(y+this.position.y, x+this.position.x)) {
+                            grid[y+this.position.y][x+this.position.x] += this.shape[y][x];
+                        }
+                        
+                    }
+                }
+                this.newBlock();
+                console.log(valid(this.shape, this.position));
+                if (valid(this.shape, this.position)) {
+                    total += 4;
+                    t.innerHTML = total;
+                    check();
+                    //this.clear();
+                    this.draw();
+                } else {
+                    stop = true;
+                    //cancelAnimationFrame(req);
+                    document.removeEventListener("keydown", moveBlock);
+                }
+            }
+            return v;
+        }
+        
+        place() {
+            let v = true;
+            while (v) {
+                v = this.moveDown();
+            }
+        }
+    }
+
+    function moveBlock(evt) {
+        if (evt.keyCode == 37) {
+            block.moveLeft();
+        } else if (evt.keyCode == 39) {
+            block.moveRight();
+        } else if (evt.keyCode == 38) {
+            block.rotateRight();
+        } else if (evt.keyCode == 87) {
+            block.rotateLeft();
+        } else if (evt.keyCode == 40) {
+            block.moveDown();
+            //console.log(v);
+        } else if (evt.keyCode == 81) {
+            block.place();
+        }
+        /*if (move[evt.keyCode]) {
+            evt.preventDefault();
+            let pos = move[evt.keyCode](grid.block.position);
+            if (valid(block.shape, pos)) {
+                block.position = pos;
+            }
+            //ctx.clearRect(0, 0, 10, 20);
+            grid.block.clear();
+            grid.block.draw();
+        }*/
+    }
+
+    function valid(shape, pos) {
+        for (let y = 0; y < shape.length; y++) {
+            for (let x = 0; x < shape.length; x++) {
+                if (shape[y][x] > 0) {
+                    console.log(validPoint(y+pos.y, x+pos.x));
+                    if (validPoint(y+pos.y, x+pos.x)) {
+                        if (grid[y+pos.y][x+pos.x] > 0) {
+                            return false;
+                        }
+                    } else {
+                        console.log("aaaaa")
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    function validPoint(y, x) {
+        return (x >= 0 && x < 10 && y < 20);
+    }
+
+    const grid = Array(20).fill().map(() => Array(10).fill(0));
+    
+    //const grid = new Grid();
+    //grid.reset();
+    let block = new Block(ctx);
+    block.newBlock();
+    block.draw();
+
+
+    document.addEventListener("keydown", moveBlock);
+    //const block = new Block(ctx);
+    //block.draw();
+    //console.log(block.position);
+
+</script>
